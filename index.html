@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🎨 AI 웹툰 만들기</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --paper:#FFFBF2;
+  --ink:#201C3A;
+  --ink-soft:#615C82;
+  --line:#201C3A;
+  --yellow:#FFC93C;
+  --yellow-d:#E8A700;
+  --pink:#FF4D6D;
+  --pink-d:#D6294B;
+  --pink-l:#FFE3E9;
+  --cyan:#00C2D1;
+  --cyan-d:#0090A0;
+  --cyan-l:#DFF7F8;
+  --purple:#4B3FCB;
+  --purple-d:#332A8F;
+  --purple-l:#ECEAFB;
+  --panel:#FFFFFF;
+  --shadow-hard:5px 5px 0 var(--ink);
+  --shadow-hard-sm:3px 3px 0 var(--ink);
+  --r:18px; --r-sm:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;
+  background-image:radial-gradient(circle at 1px 1px, rgba(32,28,58,.10) 1.6px, transparent 0);
+  background-size:20px 20px;}
+.comic{font-family:'Black Han Sans',sans-serif;letter-spacing:.5px}
+img{max-width:100%;display:block}
+button{font-family:'Noto Sans KR',sans-serif}
+textarea,input{font-family:'Noto Sans KR',sans-serif}
+
+/* ===== HERO ===== */
+.hero{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--purple-d) 0%,var(--purple) 55%,var(--pink) 130%);padding:36px 20px 54px;color:#fff}
+.hero::after{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px, rgba(255,255,255,.22) 1.6px, transparent 0);background-size:24px 24px;pointer-events:none}
+.hero-in{max-width:760px;margin:0 auto;position:relative;z-index:2}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.5);border-radius:20px;padding:5px 13px;font-size:11.5px;font-weight:700}
+.hero-title{font-size:clamp(28px,6vw,42px);margin-top:14px;text-shadow:3px 3px 0 rgba(0,0,0,.18);line-height:1.2}
+.hero-sub{font-size:14px;color:#F4EFFF;margin-top:10px;max-width:560px;line-height:1.75}
+.db-badge{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;opacity:.9}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.4)}
+.dot.ok{background:#8FF0C0;box-shadow:0 0 6px #8FF0C0}
+.dot.err{background:#FF9C9C}
+
+/* ===== MAIN LAYOUT ===== */
+.main{max-width:760px;margin:0 auto;padding:0 16px 90px}
+
+/* ===== INPUT CARD ===== */
+.input-card{background:var(--panel);border:3px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-hard);padding:22px;margin-top:-28px;position:relative;z-index:5}
+.field-label{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:900;margin-bottom:8px}
+.field-label .comic{font-size:15px}
+textarea#topicInput{width:100%;border:2.5px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;font-size:15px;resize:vertical;min-height:70px;outline:none;line-height:1.6}
+textarea#topicInput:focus{border-color:var(--purple);background:var(--purple-l)}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{background:var(--yellow);border:2px solid var(--line);color:var(--ink);font-size:12px;font-weight:700;padding:7px 13px;border-radius:16px;cursor:pointer;box-shadow:2px 2px 0 var(--ink);transition:transform .1s}
+.chip:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+.chip-refresh{background:var(--panel);border:2px dashed var(--ink-soft);color:var(--ink-soft)}
+
+.cutcount-row{display:flex;align-items:center;gap:14px;margin-top:18px}
+.stepper{display:flex;align-items:center;gap:0;border:2.5px solid var(--line);border-radius:16px;overflow:hidden}
+.stepper button{width:44px;height:44px;background:var(--cyan);border:none;font-size:20px;font-weight:900;color:#fff;cursor:pointer}
+.stepper button:active{background:var(--cyan-d)}
+.stepper button:disabled{opacity:.4;cursor:not-allowed}
+.stepper-val{width:56px;text-align:center;font-family:'Black Han Sans',sans-serif;font-size:20px;background:#fff}
+.cutcount-hint{font-size:12px;color:var(--ink-soft)}
+
+.btn-main{margin-top:20px;width:100%;background:var(--pink);color:#fff;border:3px solid var(--line);border-radius:16px;padding:16px;font-family:'Black Han Sans',sans-serif;font-size:18px;cursor:pointer;box-shadow:var(--shadow-hard-sm);transition:transform .1s}
+.btn-main:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.btn-main:disabled{opacity:.5;cursor:not-allowed}
+
+/* ===== STATUS ===== */
+.loading-box{display:none;text-align:center;padding:60px 20px;color:var(--ink-soft)}
+.loading-box .spin{width:40px;height:40px;border-radius:50%;border:5px solid var(--purple-l);border-top-color:var(--purple);margin:0 auto 14px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hint-empty{text-align:center;padding:60px 20px;color:var(--ink-soft);font-size:13.5px}
+.hint-empty .big{font-size:44px;margin-bottom:10px;display:block}
+.error-box{background:#FFEAEA;border:2.5px solid var(--pink);border-radius:var(--r-sm);padding:14px 18px;color:var(--pink-d);font-size:13px;margin-top:16px;display:none;font-weight:700}
+
+/* ===== RESULTS ===== */
+.results{display:none;margin-top:30px}
+.title-card{text-align:center;margin-bottom:18px}
+.title-card .comic{font-size:24px;color:var(--purple-d)}
+.style-badge{display:inline-block;margin-top:8px;background:var(--purple-l);color:var(--purple-d);font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:14px;border:1.5px solid var(--purple)}
+
+.cover-container{margin-bottom:22px}
+.cover-card{background:linear-gradient(180deg,var(--purple-l), #fff 45%);border-color:var(--purple)}
+.cover-card::before{content:none}
+.cover-card .cut-head .comic{color:var(--purple-d)}
+
+.char-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+.char-card{flex:1;min-width:150px;background:var(--cyan-l);border:2.5px solid var(--line);border-radius:var(--r-sm);padding:12px 14px}
+.char-card h4{font-family:'Black Han Sans',sans-serif;font-size:15px;color:var(--cyan-d);margin-bottom:4px}
+.char-card .pers{font-size:11.5px;color:var(--ink-soft);margin-bottom:6px}
+.char-card textarea{width:100%;font-size:12px;border:1.5px solid var(--paper-line,#ccc);border:1.5px dashed var(--ink-soft);border-radius:8px;padding:6px 8px;resize:vertical;min-height:46px;background:#fff}
+
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;background:var(--yellow);border:2.5px solid var(--line);border-radius:var(--r-sm);padding:12px 16px;margin-bottom:22px;box-shadow:var(--shadow-hard-sm)}
+.bubble-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;font-size:13px;user-select:none}
+.bubble-icon{width:30px;height:24px;background:#fff;border:2px solid var(--line);border-radius:8px 8px 8px 2px;position:relative;display:flex;align-items:center;justify-content:center;font-size:13px;transition:background .15s}
+.bubble-toggle input{display:none}
+.bubble-toggle input:checked + .bubble-icon{background:var(--pink);color:#fff}
+.btn-all{background:var(--purple);color:#fff;border:2.5px solid var(--line);border-radius:14px;padding:11px 18px;font-family:'Black Han Sans',sans-serif;font-size:14px;cursor:pointer;box-shadow:2px 2px 0 var(--ink);white-space:nowrap}
+.btn-all:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+.btn-all:disabled{opacity:.5;cursor:not-allowed}
+.progress-text{font-size:12px;font-weight:700;color:var(--purple-d);width:100%}
+
+/* ===== FILMSTRIP / CUTS ===== */
+.size-badge{display:inline-flex;align-items:center;gap:5px;background:#fff;color:var(--ink);font-size:11px;font-weight:800;padding:6px 11px;border-radius:12px;border:1.5px solid var(--ink)}
+
+.filmstrip{position:relative;padding-left:26px}
+.filmstrip::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:repeating-linear-gradient(180deg,var(--ink) 0 6px, transparent 6px 14px)}
+.cut{position:relative;background:var(--panel);border:3px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-hard);padding:18px;margin-bottom:26px}
+.cut::before{content:attr(data-num);position:absolute;left:-26px;top:14px;width:34px;height:34px;border-radius:50%;background:var(--pink);color:#fff;border:3px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'Black Han Sans',sans-serif;font-size:14px}
+.cut.is-ref{outline:3px dashed var(--yellow-d);outline-offset:3px}
+.cut-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.cut-head .comic{font-size:15px;color:var(--pink-d)}
+.ref-badge{font-size:10.5px;font-weight:900;color:var(--yellow-d);background:#FFF6DD;border:1.5px solid var(--yellow-d);border-radius:10px;padding:3px 8px}
+
+.field-mini{margin-top:10px}
+.field-mini label{font-size:11.5px;font-weight:900;color:var(--ink-soft);display:block;margin-bottom:4px}
+.field-mini textarea{width:100%;border:2px solid #DDD8F5;border-radius:10px;padding:9px 11px;font-size:13.5px;line-height:1.6;resize:vertical;min-height:52px;outline:none}
+.field-mini textarea:focus{border-color:var(--purple)}
+.field-mini.dialogue textarea{background:var(--pink-l);border-color:var(--pink)}
+
+.prompt-toggle{margin-top:10px;font-size:11.5px;font-weight:700;color:var(--purple-d);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.prompt-box{display:none;margin-top:8px}
+.prompt-box.open{display:block}
+.prompt-box textarea{width:100%;border:2px dashed var(--purple);border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.6;resize:vertical;min-height:90px;background:var(--purple-l);outline:none;font-family:monospace}
+.prompt-refresh{font-size:11px;font-weight:700;color:var(--ink-soft);background:#fff;border:1.5px solid var(--ink-soft);border-radius:10px;padding:4px 9px;cursor:pointer;margin-top:6px}
+
+.cut-actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+.btn-gen{flex:1;min-width:140px;background:var(--cyan);color:#fff;border:2.5px solid var(--line);border-radius:14px;padding:11px;font-family:'Black Han Sans',sans-serif;font-size:13.5px;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.btn-gen:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+.btn-gen:disabled{opacity:.5;cursor:not-allowed}
+
+.img-area{margin-top:14px}
+.img-loading{display:none;text-align:center;padding:26px;color:var(--ink-soft);font-size:12.5px}
+.img-loading .spin-sm{width:26px;height:26px;border-radius:50%;border:4px solid var(--cyan-l);border-top-color:var(--cyan);margin:0 auto 8px;animation:sp .8s linear infinite}
+.img-error{display:none;background:#FFEAEA;color:var(--pink-d);font-size:12px;font-weight:700;border-radius:10px;padding:10px 12px;margin-top:8px}
+.img-wrap{display:none}
+.img-wrap img{width:100%;border-radius:12px;border:2.5px solid var(--line)}
+.img-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn-sm{flex:1;min-width:110px;border:2px solid var(--line);border-radius:12px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;background:#fff}
+.btn-sm.canva{background:var(--purple);color:#fff;border-color:var(--line)}
+.btn-sm.dl{background:var(--yellow)}
+.btn-sm.redo{background:#fff;color:var(--ink-soft)}
+.btn-sm.ref{background:#FFF6DD;color:var(--yellow-d);font-weight:900}
+.canva-hint{font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.6}
+
+.reset-bar{text-align:center;margin-top:10px}
+.btn-reset{background:none;border:none;color:var(--ink-soft);font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer}
+
+.footer-note{text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:30px;line-height:1.8}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:700;box-shadow:0 10px 40px rgba(0,0,0,.25);transition:transform .3s,opacity .3s;opacity:0;pointer-events:none;z-index:999;white-space:nowrap;max-width:88vw;text-align:center}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+@media(max-width:480px){
+  .filmstrip{padding-left:22px}
+  .cut::before{left:-22px;width:30px;height:30px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="hero-badge">🎨 AI 웹툰 만들기</div>
+      <div class="db-badge"><div class="dot" id="dbDot"></div><span id="dbText">연결 중…</span></div>
+    </div>
+    <h1 class="hero-title comic">내 이야기를 웹툰으로!</h1>
+    <p class="hero-sub">주제를 입력하면 AI가 컷별 이야기와 그림 프롬프트를 만들어 줘요. 그림까지 만든 다음, 캔바에 쏙 복사해서 웹툰을 완성해 보세요! 🖌️</p>
+  </div>
+</div>
+
+<main class="main">
+  <div class="input-card">
+    <div class="field-label"><span class="comic">✏️</span> 어떤 이야기를 만들고 싶나요?</div>
+    <textarea id="topicInput" maxlength="200" placeholder="예: 만약 우리 반에 시간여행 시계가 생긴다면?"></textarea>
+    <div class="chip-row" id="chipRow"></div>
+    <div class="chip-row">
+      <span class="chip chip-refresh" id="chipRefresh">🔄 다른 주제 보기</span>
+    </div>
+
+    <div class="cutcount-row">
+      <div class="field-label" style="margin-bottom:0"><span class="comic">🎬</span> 컷 수</div>
+      <div class="stepper">
+        <button type="button" id="cutMinus">−</button>
+        <div class="stepper-val" id="cutCountVal">4</div>
+        <button type="button" id="cutPlus">+</button>
+      </div>
+      <span class="cutcount-hint">(최대 10컷)</span>
+    </div>
+
+    <button class="btn-main" id="genScenarioBtn">🚀 시나리오 만들기</button>
+  </div>
+
+  <div class="loading-box" id="loadingBox">
+    <div class="spin"></div>
+    <div class="comic" style="font-size:15px">AI가 이야기를 만들고 있어요…</div>
+  </div>
+
+  <div id="emptyHint" class="hint-empty">
+    <span class="big">📖</span>
+    위에 이야기 주제를 적고 '시나리오 만들기'를 눌러보세요!
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="results" id="results">
+    <div class="title-card">
+      <div class="comic" id="wtTitle"></div>
+      <div class="style-badge" id="styleBadge"></div>
+    </div>
+
+    <div class="cover-container" id="coverContainer"></div>
+
+    <div class="char-row" id="charRow"></div>
+
+    <div class="toolbar">
+      <label class="bubble-toggle">
+        <input type="checkbox" id="bubbleToggle" checked/>
+        <span class="bubble-icon">💬</span>
+        말풍선(대사) 넣기
+      </label>
+      <button class="btn-all" id="genAllBtn">🖼️ 표지+전체 컷 한번에 만들기</button>
+      <span class="size-badge">🖥️ 1920×1080 (16:9)</span>
+      <div class="progress-text" id="progressText"></div>
+    </div>
+
+    <div class="filmstrip" id="cutList"></div>
+
+    <div class="reset-bar">
+      <button class="btn-reset" id="resetBtn">↺ 새 이야기로 다시 만들기</button>
+    </div>
+  </div>
+
+  <p class="footer-note">✨ 이 웹툰은 AI가 만든 이야기와 그림이에요. 선생님과 함께 내용을 확인하고, 캔바에서 자유롭게 꾸며 보세요!</p>
+</main>
+
+<div id="toast"></div>
+
+<script>
+/* ===== SUPABASE (업로드된 index.html과 동일한 API 설정 사용) ===== */
+const SB_URL  = "https://pqjuvuflinnrpemqcafl.supabase.co";
+const SB_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxanV2dWZsaW5ucnBlbXFjYWZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NzAzMjQsImV4cCI6MjA5NDA0NjMyNH0.E4sJv1gM9TbWG-2o90aH8wJXZMLRY_uLQ9fgWARX1Ro";
+const SB_H    = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Prefer":"return=representation"};
+
+async function sbGet(table, q) {
+  var res = await fetch(SB_URL + "/rest/v1/" + table + (q||""), {headers: SB_H});
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+async function sbInsert(table, row) {
+  await fetch(SB_URL + "/rest/v1/" + table, {method:"POST", headers:SB_H, body:JSON.stringify(row)});
+}
+
+/* ===== STATE ===== */
+var GEMINI_KEY = "";
+var state = {
+  cutCount: 4,
+  scenario: null,       // {title, art_style, characters:[{name,personality,look}], cuts:[{cut_no,scene,dialogue:[],image_action,camera}]}
+  prompts: {},           // cut_no -> base prompt string (editable, without bubble instruction)
+  images: {},             // (cut_no | "cover") -> {mimeType, data, status:'idle'|'loading'|'done'|'error', errMsg}
+  referenceCut: null,     // cut_no or "cover" used as character reference image
+  bubbleOn: true,
+  coverTitleOn: true,
+  isGeneratingScenario: false,
+  isBatchGenerating: false
+};
+
+/* ===== DB 상태 표시 ===== */
+function setDb(state2) {
+  var dot = document.getElementById("dbDot");
+  var txt = document.getElementById("dbText");
+  if (state2 === "ok")  { dot.className = "dot ok";  txt.textContent = "연결됨"; }
+  else if (state2 === "err") { dot.className = "dot err"; txt.textContent = "오류"; }
+  else { dot.className = "dot"; txt.textContent = "연결 중…"; }
+}
+
+/* ===== 추천 주제 예시 ===== */
+var TOPIC_SAMPLES = [
+  "만약 우리 반에 시간여행 시계가 생긴다면",
+  "학교 급식실에 숨겨진 비밀 요리사 이야기",
+  "말하는 강아지와 떠나는 방학 여행",
+  "우주에서 온 전학생과 친구가 된 날",
+  "그림 속으로 쏙 들어간 미술 시간",
+  "로봇 짝꿍과 함께하는 신나는 하루",
+  "숲속 요정 마을을 발견한 날",
+  "핸드폰 속으로 빨려 들어간 사건",
+  "마법 연필로 그린 것이 진짜가 되는 이야기",
+  "잠자는 동안 몸이 바뀌는 마법에 걸린 날",
+  "우리 학교 괴담 탐정단 이야기",
+  "10년 후 미래에서 온 나를 만난 날",
+  "동물원 동물들이 사람 말을 하게 된 날",
+  "쓰레기를 안 버리면 지구가 어떻게 될까",
+  "매일 지각하는 초능력 소년 이야기",
+  "비 오는 날 생긴 신비한 무지개 다리",
+  "김치를 싫어하던 외계인 친구 이야기",
+  "체육 시간에 생긴 축구공 요정 사건"
+];
+
+function buildChips(){
+  var pool = TOPIC_SAMPLES.slice();
+  var picked = [];
+  var count = Math.min(4, pool.length);
+  for (var i=0; i<count; i++){
+    var idx = Math.floor(Math.random() * pool.length);
+    picked.push(pool.splice(idx, 1)[0]);
+  }
+  var row = document.getElementById("chipRow");
+  row.innerHTML = "";
+  picked.forEach(function(t){
+    var chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = "💡 " + t;
+    chip.addEventListener("click", function(){
+      document.getElementById("topicInput").value = t;
+      showToast("주제를 넣었어요! 원하면 고쳐 써도 좋아요 ✍️");
+    });
+    row.appendChild(chip);
+  });
+}
+
+/* ===== INIT ===== */
+function init(){
+  setDb("connecting");
+  var settled = false;
+  function finish(ok){ if(settled) return; settled = true; setDb(ok?"ok":"err"); }
+  setTimeout(function(){ finish(false); }, 5000);
+
+  sbGet("settings", "?key=eq.gemini_api_key")
+    .then(function(rows){
+      if (rows && rows.length > 0 && rows[0].value) GEMINI_KEY = rows[0].value;
+      finish(true);
+    })
+    .catch(function(e){ console.error("[DB]", e.message||e); finish(false); });
+
+  buildChips();
+  document.getElementById("chipRefresh").addEventListener("click", buildChips);
+
+  document.getElementById("cutMinus").addEventListener("click", function(){ setCutCount(state.cutCount - 1); });
+  document.getElementById("cutPlus").addEventListener("click", function(){ setCutCount(state.cutCount + 1); });
+  setCutCount(4);
+
+  document.getElementById("genScenarioBtn").addEventListener("click", generateScenario);
+  document.getElementById("genAllBtn").addEventListener("click", generateAllImages);
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    if (confirm("지금 만든 웹툰 내용이 사라져요. 새 이야기를 만들까요?")) resetAll();
+  });
+  document.getElementById("bubbleToggle").addEventListener("change", function(e){
+    state.bubbleOn = e.target.checked;
+  });
+}
+
+function setCutCount(n){
+  if (n < 1) n = 1;
+  if (n > 10) n = 10;
+  state.cutCount = n;
+  document.getElementById("cutCountVal").textContent = n;
+  document.getElementById("cutMinus").disabled = (n <= 1);
+  document.getElementById("cutPlus").disabled = (n >= 10);
+}
+
+function resetAll(){
+  state.scenario = null;
+  state.prompts = {};
+  state.images = {};
+  state.referenceCut = null;
+  state.coverTitleOn = true;
+  document.getElementById("coverContainer").innerHTML = "";
+  document.getElementById("results").style.display = "none";
+  document.getElementById("emptyHint").style.display = "block";
+  document.getElementById("topicInput").value = "";
+  buildChips();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* ===== GEMINI 텍스트 호출 (시나리오 생성) ===== */
+var TEXT_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+
+async function callGeminiText(prompt) {
+  if (!GEMINI_KEY) throw new Error("API 키가 없습니다. (DB 연결을 확인해 주세요)");
+  for (var mi = 0; mi < TEXT_MODELS.length; mi++) {
+    var url = "https://generativelanguage.googleapis.com/v1beta/models/"
+              + TEXT_MODELS[mi] + ":generateContent?key=" + GEMINI_KEY;
+    try {
+      var res = await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          contents:[{parts:[{text:prompt}]}],
+          generationConfig:{temperature:0.7, responseMimeType:"application/json"}
+        })
+      });
+      if (res.status === 404 || res.status === 503) continue;
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error ? data.error.message : res.statusText);
+      var txt = data.candidates && data.candidates[0] && data.candidates[0].content
+                && data.candidates[0].content.parts && data.candidates[0].content.parts[0]
+                && data.candidates[0].content.parts[0].text;
+      if (!txt) throw new Error("응답 없음");
+      return txt.trim();
+    } catch(e) {
+      if (e.message && e.message.indexOf("API key") >= 0) throw e;
+      if (mi === TEXT_MODELS.length - 1) throw e;
+    }
+  }
+  throw new Error("모든 모델 호출에 실패했어요");
+}
+
+/* ===== GEMINI 이미지 호출 (컷 그림 생성) ===== */
+var IMAGE_MODELS = ["gemini-3.1-flash-image", "gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"];
+
+async function callGeminiImage(parts) {
+  if (!GEMINI_KEY) throw new Error("API 키가 없습니다.");
+  var lastErr = null;
+  for (var mi = 0; mi < IMAGE_MODELS.length; mi++) {
+    var url = "https://generativelanguage.googleapis.com/v1beta/models/"
+              + IMAGE_MODELS[mi] + ":generateContent?key=" + GEMINI_KEY;
+    try {
+      var res = await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          contents:[{parts:parts}],
+          generationConfig:{
+            responseModalities:["IMAGE"],
+            imageConfig:{ aspectRatio:"16:9", imageSize:"2K" }
+          }
+        })
+      });
+      if (res.status === 404 || res.status === 503) continue;
+      var data = await res.json();
+      if (!res.ok) {
+        var msg = data.error ? data.error.message : res.statusText;
+        lastErr = new Error(msg);
+        if (res.status === 429) throw lastErr;
+        continue;
+      }
+      var cparts = data.candidates && data.candidates[0] && data.candidates[0].content
+                  && data.candidates[0].content.parts;
+      if (!cparts) throw new Error("응답 없음");
+      for (var i=0; i<cparts.length; i++){
+        var inline = cparts[i].inlineData || cparts[i].inline_data;
+        if (inline && inline.data) {
+          return { mimeType: inline.mimeType || inline.mime_type || "image/png", data: inline.data };
+        }
+      }
+      throw new Error("그림 데이터를 찾지 못했어요");
+    } catch(e) {
+      lastErr = e;
+      if (e.message && e.message.indexOf("API key") >= 0) throw e;
+    }
+  }
+  throw lastErr || new Error("모든 모델 호출에 실패했어요");
+}
+
+/* ===== 시나리오 프롬프트 생성 ===== */
+function buildScenarioPrompt(topic, cutCount){
+  return "당신은 초등학교 5~6학년 학생들의 AI 웹툰 만들기 수업을 돕는 웹툰 작가 도우미입니다.\n"
+  + "학생이 정한 이야기 주제: \"" + topic + "\"\n"
+  + "전체 컷 수: " + cutCount + "컷\n\n"
+  + "[임무] 이 주제로 짧은 웹툰 이야기를 만들어 주세요. 등장인물을 1~3명 정하고, 각 컷마다 무슨 일이 일어나는지, 어떤 대사를 하는지, 그림을 그릴 때 필요한 설명을 만들어 주세요.\n\n"
+  + "[작성 규칙]\n"
+  + "- 반드시 아래 JSON 형식으로만 답하세요. 다른 설명, 코드블록 기호(```)는 절대 쓰지 마세요.\n"
+  + "- 모든 한국어 문장은 초등학교 5~6학년이 이해하기 쉬운 낱말과 문장으로 쓰세요. 무섭거나 폭력적이거나 자극적인 내용은 절대 넣지 마세요.\n"
+  + "- 이야기는 처음-중간-끝이 자연스럽게 이어지도록 구성하고, " + cutCount + "컷 안에서 이야기가 잘 마무리되게 하세요.\n"
+  + "- characters는 1~3명으로, 이름과 성격(1문장), 그리고 그림을 그릴 때 쓸 아주 구체적인 생김새 설명(머리 모양과 색깔, 옷차림과 색깔, 표정 특징 등)을 적어주세요. 이 생김새 설명은 모든 컷에서 캐릭터 모습이 똑같이 유지되도록 하는 용도이니 최대한 자세히 쓰세요.\n"
+  + "- art_style에는 이 이야기 분위기에 어울리는 웹툰 그림체를 한국어 한 문장으로 구체적으로 설명하세요 (예: 색감, 선 굵기, 전체 분위기).\n"
+  + "- cover_desc에는 표지 그림에 어울리는 장면을 1~2문장 한국어로 쓰세요. 등장인물이 잘 보이고 이야기 전체 분위기가 느껴지는 장면으로 만드세요 (특정 한 컷을 그대로 베끼지 말고, 표지답게 대표성 있는 장면으로 만드세요).\n"
+  + "- 각 컷의 image_action에는 그 컷에서 일어나는 일을 한국어로 간단히 쓰세요. 등장인물의 동작·표정과 배경만 쓰고, 인물 생김새는 반복하지 마세요.\n"
+  + "- 각 컷의 camera에는 카메라 앵글을 한국어로 짧게 쓰세요 (예: 정면 클로즈업, 인물 전체가 보이는 장면, 위에서 내려다본 모습 등).\n"
+  + "- 각 컷의 scene에는 학생이 읽을 장면 설명을 1~2문장 한국어로 쓰세요.\n"
+  + "- 각 컷의 dialogue에는 그 컷에서 나오는 대사를 [\"이름: 대사\"] 형태의 배열로 쓰세요. 대사가 없는 컷은 빈 배열 []로 하세요. 한 컷에 대사는 최대 2개까지만 넣으세요.\n\n"
+  + "[JSON 형식]\n"
+  + "{\n"
+  + '  "title": "웹툰 제목",\n'
+  + '  "art_style": "그림체 설명 한 문장",\n'
+  + '  "cover_desc": "표지 장면 설명",\n'
+  + '  "characters": [\n'
+  + '    {"name":"이름", "personality":"성격 1문장", "look":"아주 구체적인 생김새 설명"}\n'
+  + '  ],\n'
+  + '  "cuts": [\n'
+  + '    {"cut_no":1, "scene":"장면 설명", "dialogue":["이름: 대사"], "image_action":"그 컷에서 일어나는 일", "camera":"카메라 앵글"}\n'
+  + '  ]\n'
+  + "}\n"
+  + "cuts 배열은 반드시 " + cutCount + "개의 항목을 가져야 합니다.";
+}
+
+function parseJsonSafe(text){
+  var t = text.trim();
+  t = t.replace(/^```json/i,"").replace(/^```/,"").replace(/```$/,"").trim();
+  return JSON.parse(t);
+}
+
+function buildBasePrompt(cut, characters, artStyle){
+  var chars = characters.map(function(c){ return c.name + "(" + c.look + ")"; }).join(", ");
+  return "[그림체] " + artStyle + "\n"
+       + "[등장인물] " + chars + "\n"
+       + "[장면] " + cut.image_action + "\n"
+       + "[카메라 앵글] " + cut.camera;
+}
+
+function buildCoverBasePrompt(d){
+  var chars = (d.characters||[]).map(function(c){ return c.name + "(" + c.look + ")"; }).join(", ");
+  return "[그림체] " + (d.art_style||"") + "\n"
+       + "[등장인물] " + chars + "\n"
+       + "[표지 장면] " + (d.cover_desc || "이야기의 주인공들이 함께 나오는 대표 장면") + "\n"
+       + "[카메라 앵글] 인물이 잘 보이는 표지용 구도";
+}
+
+/* ===== 시나리오 생성 실행 ===== */
+async function generateScenario(){
+  if (state.isGeneratingScenario) return;
+  var topic = document.getElementById("topicInput").value.trim();
+  if (!topic){ showToast("먼저 이야기 주제를 적어주세요! ✍️"); return; }
+
+  state.isGeneratingScenario = true;
+  document.getElementById("genScenarioBtn").disabled = true;
+  document.getElementById("errorBox").style.display = "none";
+  document.getElementById("results").style.display = "none";
+  document.getElementById("emptyHint").style.display = "none";
+  document.getElementById("loadingBox").style.display = "block";
+
+  try{
+    var raw = await callGeminiText(buildScenarioPrompt(topic, state.cutCount));
+    var d = parseJsonSafe(raw);
+    if (!d.cuts || !d.cuts.length) throw new Error("이야기를 만들지 못했어요");
+
+    state.scenario = d;
+    state.prompts = {};
+    state.images = {};
+    state.referenceCut = null;
+    state.coverTitleOn = true;
+
+    state.prompts["cover"] = buildCoverBasePrompt(d);
+    state.images["cover"] = { status:"idle" };
+
+    d.cuts.forEach(function(cut){
+      state.prompts[cut.cut_no] = buildBasePrompt(cut, d.characters||[], d.art_style||"");
+      state.images[cut.cut_no] = { status:"idle" };
+    });
+
+    renderScenario();
+    sbInsert("chat_logs", {character:"webtoon_maker", question: topic, answered_at: new Date().toISOString()}).catch(function(){});
+  } catch(e){
+    document.getElementById("errorBox").innerHTML = "앗! 이야기를 만들지 못했어요 😢<br><small>" + escHtml(e.message||"") + "</small>";
+    document.getElementById("errorBox").style.display = "block";
+    document.getElementById("emptyHint").style.display = "block";
+  }
+
+  document.getElementById("loadingBox").style.display = "none";
+  state.isGeneratingScenario = false;
+  document.getElementById("genScenarioBtn").disabled = false;
+}
+
+/* ===== 화면 렌더링 ===== */
+function renderScenario(){
+  var d = state.scenario;
+  document.getElementById("wtTitle").textContent = "📖 " + (d.title || "");
+  document.getElementById("styleBadge").textContent = "🎨 " + (d.art_style || "");
+
+  var coverContainer = document.getElementById("coverContainer");
+  coverContainer.innerHTML = "";
+  coverContainer.appendChild(buildCoverCard());
+
+  var charRow = document.getElementById("charRow");
+  charRow.innerHTML = "";
+  (d.characters||[]).forEach(function(c, idx){
+    var card = document.createElement("div");
+    card.className = "char-card";
+    var h4 = document.createElement("h4");
+    h4.textContent = "👤 " + c.name;
+    var pers = document.createElement("div");
+    pers.className = "pers";
+    pers.textContent = c.personality || "";
+    var ta = document.createElement("textarea");
+    ta.value = c.look || "";
+    ta.addEventListener("input", function(e){ c.look = e.target.value; });
+    card.appendChild(h4);
+    card.appendChild(pers);
+    card.appendChild(ta);
+    charRow.appendChild(card);
+  });
+
+  var list = document.getElementById("cutList");
+  list.innerHTML = "";
+  (d.cuts||[]).forEach(function(cut){
+    list.appendChild(buildCutCard(cut));
+  });
+
+  document.getElementById("bubbleToggle").checked = state.bubbleOn;
+  document.getElementById("progressText").textContent = "";
+  document.getElementById("results").style.display = "block";
+  window.scrollTo({top: document.getElementById("results").offsetTop - 20, behavior:"smooth"});
+}
+
+function buildCoverCard(){
+  var d = state.scenario;
+
+  var card = document.createElement("div");
+  card.className = "cut cover-card";
+  card.id = "cover-card";
+
+  var head = document.createElement("div");
+  head.className = "cut-head";
+  var htitle = document.createElement("div");
+  htitle.className = "comic";
+  htitle.textContent = "🖼️ 표지";
+  var refBadge = document.createElement("span");
+  refBadge.className = "ref-badge";
+  refBadge.id = "refbadge-cover";
+  refBadge.textContent = "⭐ 캐릭터 기준 그림";
+  refBadge.style.display = "none";
+  head.appendChild(htitle);
+  head.appendChild(refBadge);
+  card.appendChild(head);
+
+  var descField = document.createElement("div");
+  descField.className = "field-mini";
+  descField.innerHTML = '<label>📝 표지 장면 설명</label>';
+  var descTa = document.createElement("textarea");
+  descTa.value = d.cover_desc || "";
+  descTa.addEventListener("input", function(e){ d.cover_desc = e.target.value; });
+  descField.appendChild(descTa);
+  card.appendChild(descField);
+
+  var titleToggleWrap = document.createElement("label");
+  titleToggleWrap.className = "bubble-toggle";
+  titleToggleWrap.style.marginTop = "12px";
+  var titleCheckbox = document.createElement("input");
+  titleCheckbox.type = "checkbox";
+  titleCheckbox.checked = state.coverTitleOn;
+  titleCheckbox.addEventListener("change", function(e){ state.coverTitleOn = e.target.checked; });
+  var titleIcon = document.createElement("span");
+  titleIcon.className = "bubble-icon";
+  titleIcon.textContent = "🔤";
+  titleToggleWrap.appendChild(titleCheckbox);
+  titleToggleWrap.appendChild(titleIcon);
+  titleToggleWrap.appendChild(document.createTextNode("표지에 제목 글자 넣기"));
+  card.appendChild(titleToggleWrap);
+
+  var titleHint = document.createElement("div");
+  titleHint.className = "canva-hint";
+  titleHint.textContent = "💡 AI가 글자를 조금 다르게 쓸 수도 있어요. 캔바에서 제목 글자를 따로 얹어도 좋아요!";
+  card.appendChild(titleHint);
+
+  var promptToggle = document.createElement("div");
+  promptToggle.className = "prompt-toggle";
+  promptToggle.textContent = "🔧 AI 이미지 프롬프트 보기/수정";
+  card.appendChild(promptToggle);
+
+  var promptBox = document.createElement("div");
+  promptBox.className = "prompt-box";
+  var promptTa = document.createElement("textarea");
+  promptTa.value = state.prompts["cover"];
+  promptTa.addEventListener("input", function(e){ state.prompts["cover"] = e.target.value; });
+  var refreshBtn = document.createElement("button");
+  refreshBtn.className = "prompt-refresh";
+  refreshBtn.type = "button";
+  refreshBtn.textContent = "🔄 표지 설명으로 프롬프트 새로 만들기";
+  refreshBtn.addEventListener("click", function(){
+    var rebuilt = buildCoverBasePrompt(d);
+    state.prompts["cover"] = rebuilt;
+    promptTa.value = rebuilt;
+    showToast("프롬프트를 새로 만들었어요!");
+  });
+  promptBox.appendChild(promptTa);
+  promptBox.appendChild(refreshBtn);
+  card.appendChild(promptBox);
+
+  promptToggle.addEventListener("click", function(){
+    promptBox.classList.toggle("open");
+  });
+
+  var actions = document.createElement("div");
+  actions.className = "cut-actions";
+  var genBtn = document.createElement("button");
+  genBtn.className = "btn-gen";
+  genBtn.id = "genbtn-cover";
+  genBtn.textContent = "🖼️ 표지 만들기";
+  genBtn.addEventListener("click", function(){ generateImage("cover"); });
+  actions.appendChild(genBtn);
+  card.appendChild(actions);
+
+  var imgArea = document.createElement("div");
+  imgArea.className = "img-area";
+  imgArea.id = "imgarea-cover";
+
+  var loadingEl = document.createElement("div");
+  loadingEl.className = "img-loading";
+  loadingEl.id = "imgloading-cover";
+  loadingEl.innerHTML = '<div class="spin-sm"></div>표지를 그리고 있어요…';
+
+  var errEl = document.createElement("div");
+  errEl.className = "img-error";
+  errEl.id = "imgerror-cover";
+
+  var wrapEl = document.createElement("div");
+  wrapEl.className = "img-wrap";
+  wrapEl.id = "imgwrap-cover";
+
+  imgArea.appendChild(loadingEl);
+  imgArea.appendChild(errEl);
+  imgArea.appendChild(wrapEl);
+  card.appendChild(imgArea);
+
+  return card;
+}
+
+function buildCutCard(cut){
+  var d = state.scenario;
+  var cno = cut.cut_no;
+
+  var card = document.createElement("div");
+  card.className = "cut";
+  card.setAttribute("data-num", cno);
+  card.id = "cut-" + cno;
+
+  var head = document.createElement("div");
+  head.className = "cut-head";
+  var htitle = document.createElement("div");
+  htitle.className = "comic";
+  htitle.textContent = cno + "컷";
+  var refBadge = document.createElement("span");
+  refBadge.className = "ref-badge";
+  refBadge.id = "refbadge-" + cno;
+  refBadge.textContent = "⭐ 캐릭터 기준 그림";
+  refBadge.style.display = "none";
+  head.appendChild(htitle);
+  head.appendChild(refBadge);
+  card.appendChild(head);
+
+  var sceneField = document.createElement("div");
+  sceneField.className = "field-mini";
+  sceneField.innerHTML = '<label>📝 장면 설명</label>';
+  var sceneTa = document.createElement("textarea");
+  sceneTa.value = cut.scene || "";
+  sceneTa.addEventListener("input", function(e){ cut.scene = e.target.value; });
+  sceneField.appendChild(sceneTa);
+  card.appendChild(sceneField);
+
+  var dlgField = document.createElement("div");
+  dlgField.className = "field-mini dialogue";
+  dlgField.innerHTML = '<label>💬 대사 (한 줄에 하나씩, 없으면 비워두기)</label>';
+  var dlgTa = document.createElement("textarea");
+  dlgTa.placeholder = "예: 민준: 저게 뭐지?";
+  dlgTa.value = (cut.dialogue||[]).join("\n");
+  dlgTa.addEventListener("input", function(e){
+    cut.dialogue = e.target.value.split("\n").map(function(s){return s.trim();}).filter(function(s){return s;});
+  });
+  dlgField.appendChild(dlgTa);
+  card.appendChild(dlgField);
+
+  var promptToggle = document.createElement("div");
+  promptToggle.className = "prompt-toggle";
+  promptToggle.textContent = "🔧 AI 이미지 프롬프트 보기/수정";
+  card.appendChild(promptToggle);
+
+  var promptBox = document.createElement("div");
+  promptBox.className = "prompt-box";
+  var promptTa = document.createElement("textarea");
+  promptTa.value = state.prompts[cno];
+  promptTa.addEventListener("input", function(e){ state.prompts[cno] = e.target.value; });
+  var refreshBtn = document.createElement("button");
+  refreshBtn.className = "prompt-refresh";
+  refreshBtn.type = "button";
+  refreshBtn.textContent = "🔄 장면 설명으로 프롬프트 새로 만들기";
+  refreshBtn.addEventListener("click", function(){
+    var rebuilt = buildBasePrompt(cut, d.characters||[], d.art_style||"");
+    state.prompts[cno] = rebuilt;
+    promptTa.value = rebuilt;
+    showToast("프롬프트를 새로 만들었어요!");
+  });
+  promptBox.appendChild(promptTa);
+  promptBox.appendChild(refreshBtn);
+  card.appendChild(promptBox);
+
+  promptToggle.addEventListener("click", function(){
+    promptBox.classList.toggle("open");
+  });
+
+  var actions = document.createElement("div");
+  actions.className = "cut-actions";
+  var genBtn = document.createElement("button");
+  genBtn.className = "btn-gen";
+  genBtn.id = "genbtn-" + cno;
+  genBtn.textContent = "🖼️ 이 컷 그림 만들기";
+  genBtn.addEventListener("click", function(){ generateImage(cno); });
+  actions.appendChild(genBtn);
+  card.appendChild(actions);
+
+  var imgArea = document.createElement("div");
+  imgArea.className = "img-area";
+  imgArea.id = "imgarea-" + cno;
+
+  var loadingEl = document.createElement("div");
+  loadingEl.className = "img-loading";
+  loadingEl.id = "imgloading-" + cno;
+  loadingEl.innerHTML = '<div class="spin-sm"></div>그림을 그리고 있어요…';
+
+  var errEl = document.createElement("div");
+  errEl.className = "img-error";
+  errEl.id = "imgerror-" + cno;
+
+  var wrapEl = document.createElement("div");
+  wrapEl.className = "img-wrap";
+  wrapEl.id = "imgwrap-" + cno;
+
+  imgArea.appendChild(loadingEl);
+  imgArea.appendChild(errEl);
+  imgArea.appendChild(wrapEl);
+  card.appendChild(imgArea);
+
+  return card;
+}
+
+/* ===== 프롬프트 합치기 (말풍선 설정 반영) ===== */
+function composeFinalPrompt(id){
+  var basePrompt = state.prompts[id];
+
+  if (id === "cover"){
+    var titleInstruction = state.coverTitleOn
+      ? "\n[제목 글자] 표지에 어울리는 자리에 큰 한국어 제목 글씨로 \"" + (state.scenario.title||"") + "\"를 예쁘게 넣어 주세요."
+      : "\n[제목 글자] 글자는 넣지 말고 그림만 그려주세요.";
+    return basePrompt + titleInstruction
+      + "\n16:9 가로로 넓은 화면(1920x1080) 구도로, 인물이 잘 보이게 그려 주세요. 워터마크나 서명, 만든 사람 이름 글자는 넣지 마세요.";
+  }
+
+  var cut = state.scenario.cuts.find(function(c){ return c.cut_no === id; });
+  var dialogueText = (cut.dialogue||[]).join(" / ");
+  var bubbleInstruction;
+  if (state.bubbleOn){
+    bubbleInstruction = dialogueText
+      ? "\n[말풍선] 다음 대사를 자연스러운 만화 말풍선으로 그림에 넣어 주세요: " + dialogueText
+      : "\n[말풍선] 장면에 어울리는 짧은 말풍선을 하나 자유롭게 넣어 주세요.";
+  } else {
+    bubbleInstruction = "\n[말풍선] 말풍선이나 글자는 절대 넣지 말고, 그림만 그려주세요.";
+  }
+  return basePrompt + bubbleInstruction
+    + "\n16:9 가로로 넓은 화면(1920x1080) 구도로 그려 주세요. 워터마크나 서명, 만든 사람 이름 글자는 넣지 마세요.";
+}
+
+/* ===== 이미지 생성 (표지 또는 컷 공용) ===== */
+async function generateImage(id){
+  if (state.images[id] && state.images[id].status === "loading") return;
+
+  state.images[id] = { status:"loading" };
+  document.getElementById("genbtn-" + id).disabled = true;
+  document.getElementById("imgloading-" + id).style.display = "block";
+  document.getElementById("imgerror-" + id).style.display = "none";
+  document.getElementById("imgwrap-" + id).style.display = "none";
+
+  try{
+    var parts = [];
+    if (state.referenceCut !== null && state.referenceCut !== id
+        && state.images[state.referenceCut] && state.images[state.referenceCut].data){
+      var ref = state.images[state.referenceCut];
+      parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } });
+      parts.push({ text: "[캐릭터 일관성 유지] 위 참고 그림 속 캐릭터와 똑같은 생김새, 옷차림, 그림체를 유지해서 아래 장면을 그려주세요.\n" + composeFinalPrompt(id) });
+    } else {
+      parts.push({ text: composeFinalPrompt(id) });
+    }
+
+    var result = await callGeminiImage(parts);
+    state.images[id] = { status:"done", mimeType: result.mimeType, data: result.data };
+
+    if (state.referenceCut === null){
+      state.referenceCut = id;
+      refreshRefBadges();
+    }
+
+    renderImageResult(id);
+  } catch(e){
+    state.images[id] = { status:"error", errMsg: e.message||"알 수 없는 오류" };
+    var errEl = document.getElementById("imgerror-" + id);
+    errEl.textContent = "그림을 만들지 못했어요 😢 (" + (e.message||"") + ") 다시 눌러보세요!";
+    errEl.style.display = "block";
+  }
+
+  document.getElementById("imgloading-" + id).style.display = "none";
+  document.getElementById("genbtn-" + id).disabled = false;
+}
+
+function renderImageResult(id){
+  var info = state.images[id];
+  var wrap = document.getElementById("imgwrap-" + id);
+  wrap.innerHTML = "";
+  wrap.style.display = "block";
+
+  var dataUrl = "data:" + info.mimeType + ";base64," + info.data;
+  var label = (id === "cover") ? "표지" : (id + "컷");
+
+  var img = document.createElement("img");
+  img.src = dataUrl;
+  img.alt = "웹툰 " + label;
+  wrap.appendChild(img);
+
+  var btnRow = document.createElement("div");
+  btnRow.className = "img-btns";
+
+  var canvaBtn = document.createElement("button");
+  canvaBtn.className = "btn-sm canva";
+  canvaBtn.type = "button";
+  canvaBtn.textContent = "📋 캔바에 복사하기";
+  canvaBtn.addEventListener("click", function(){ copyImageToClipboard(dataUrl); });
+
+  var dlBtn = document.createElement("button");
+  dlBtn.className = "btn-sm dl";
+  dlBtn.type = "button";
+  dlBtn.textContent = "⬇️ 다운로드";
+  dlBtn.addEventListener("click", function(){ downloadImage(dataUrl, "웹툰_" + label + ".png"); });
+
+  var redoBtn = document.createElement("button");
+  redoBtn.className = "btn-sm redo";
+  redoBtn.type = "button";
+  redoBtn.textContent = "🔁 다시 그리기";
+  redoBtn.addEventListener("click", function(){ generateImage(id); });
+
+  var refBtn = document.createElement("button");
+  refBtn.className = "btn-sm ref";
+  refBtn.type = "button";
+  refBtn.textContent = "⭐ 기준 그림으로 정하기";
+  refBtn.addEventListener("click", function(){
+    state.referenceCut = id;
+    refreshRefBadges();
+    showToast("이 그림을 캐릭터 기준으로 정했어요! 다음 그림부터 적용돼요 ⭐");
+  });
+
+  btnRow.appendChild(canvaBtn);
+  btnRow.appendChild(dlBtn);
+  btnRow.appendChild(redoBtn);
+  btnRow.appendChild(refBtn);
+  wrap.appendChild(btnRow);
+
+  var hint = document.createElement("div");
+  hint.className = "canva-hint";
+  hint.textContent = "👉 복사한 다음, 캔바 화면을 클릭하고 Ctrl+V(맥은 Cmd+V)로 붙여넣기 해보세요!";
+  wrap.appendChild(hint);
+
+  refreshRefBadges();
+}
+
+function refreshRefBadges(){
+  var ids = ["cover"].concat((state.scenario.cuts||[]).map(function(c){ return c.cut_no; }));
+  ids.forEach(function(id){
+    var badge = document.getElementById("refbadge-" + id);
+    var card = (id === "cover") ? document.getElementById("cover-card") : document.getElementById("cut-" + id);
+    if (!badge) return;
+    var isRef = state.referenceCut === id;
+    badge.style.display = isRef ? "inline-block" : "none";
+    if (card) card.classList.toggle("is-ref", isRef);
+  });
+}
+
+/* ===== 표지 + 전체 컷 한번에 만들기 ===== */
+async function generateAllImages(){
+  if (state.isBatchGenerating || !state.scenario) return;
+  state.isBatchGenerating = true;
+  var btn = document.getElementById("genAllBtn");
+  btn.disabled = true;
+  var progressEl = document.getElementById("progressText");
+
+  if (!state.images["cover"] || state.images["cover"].status !== "done"){
+    progressEl.textContent = "🖼️ 표지를 먼저 그리고 있어요…";
+    await generateImage("cover");
+  }
+
+  var cuts = state.scenario.cuts;
+  for (var i=0; i<cuts.length; i++){
+    var cno = cuts[i].cut_no;
+    progressEl.textContent = "🖍️ " + (i+1) + " / " + cuts.length + " 컷 그리는 중…";
+    await generateImage(cno);
+  }
+  progressEl.textContent = "✅ 표지와 전체 컷을 다 만들었어요!";
+  state.isBatchGenerating = false;
+  btn.disabled = false;
+}
+
+/* ===== 캔바 복사하기 (클립보드에 진짜 이미지로 복사) ===== */
+async function copyImageToClipboard(dataUrl){
+  try{
+    var pngBlob = await toPngBlob(dataUrl);
+    if (navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([ new ClipboardItem({ "image/png": pngBlob }) ]);
+      showToast("✅ 이미지를 복사했어요! 캔바에서 Ctrl+V로 붙여넣어 보세요");
+    } else {
+      throw new Error("클립보드 이미지 복사를 지원하지 않는 브라우저예요");
+    }
+  } catch(e){
+    showToast("복사에 실패했어요 😢 대신 다운로드해서 캔바에 올려보세요.");
+  }
+}
+
+function toPngBlob(dataUrl){
+  return new Promise(function(resolve, reject){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(function(blob){
+        if (blob) resolve(blob); else reject(new Error("변환 실패"));
+      }, "image/png");
+    };
+    img.onerror = function(){ reject(new Error("이미지 로딩 실패")); };
+    img.src = dataUrl;
+  });
+}
+
+/* ===== 이미지 다운로드 ===== */
+async function downloadImage(dataUrl, filename){
+  try{
+    var res = await fetch(dataUrl);
+    var blob = await res.blob();
+    var blobUrl = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 5000);
+    showToast("✅ 그림이 저장되었어요!");
+  } catch(e){
+    showToast("저장에 실패했어요 😢");
+  }
+}
+
+/* ===== HELPERS ===== */
+function escHtml(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function showToast(msg) {
+  var el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(el._t); el._t = setTimeout(function(){ el.classList.remove("show"); }, 2800);
+}
+
+/* ===== START ===== */
+init();
+</script>
+</body>
+</html>
